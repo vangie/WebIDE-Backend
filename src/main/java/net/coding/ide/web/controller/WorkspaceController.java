@@ -14,16 +14,17 @@ import net.coding.ide.entity.WorkspaceEntity;
 import net.coding.ide.model.FileInfo;
 import net.coding.ide.model.FileSearchResultEntry;
 import net.coding.ide.model.Workspace;
+import net.coding.ide.model.exception.NotFoundException;
 import net.coding.ide.model.exception.WorkspaceMissingException;
 import net.coding.ide.service.GitManager;
 import net.coding.ide.service.WorkspaceManager;
+import org.apache.http.client.methods.HttpHead;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.InputStreamResource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -32,10 +33,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -62,6 +60,9 @@ public class WorkspaceController {
 
     @Autowired
     private GitManager gitMgr;
+
+    @Value("${CODING_IDE_HOME}")
+    private String ideHome;
 
     private final static String SETTINGS_PATH = ".coding-ide/settings.json";
 
@@ -95,6 +96,20 @@ public class WorkspaceController {
         Workspace ws = wsMgr.createFromTemplate(projectName, templateName);
 
         return mapper.map(ws, WorkspaceDTO.class);
+    }
+
+
+    @RequestMapping(value = "/workspaces/{spaceKey}/export", method = GET, produces = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+    public FileSystemResource export(@RequestParam String fileName, HttpServletResponse response) {
+        File file = new File(ideHome, fileName);
+
+        if ( ! file.exists() ) {
+            throw new NotFoundException("export error");
+        }
+
+        response.addHeader(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + fileName.replace(" ", "_"));
+
+        return new FileSystemResource(file);
     }
 
     @RequestMapping(value = "/workspaces", method = POST)
