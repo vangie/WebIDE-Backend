@@ -220,7 +220,7 @@ public class WorkspaceManagerImpl extends BaseService implements WorkspaceManage
         File template = new File(repoCacheHome, templateName);
 
         if ( ! template.isDirectory() || ! template.exists() ) {
-            throw new NotFoundException("could not found template");
+            throw new NotFoundException(String.format("could not found template => %s", template.getAbsolutePath()));
         } else return template.getAbsolutePath();
     }
 
